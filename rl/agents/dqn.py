@@ -222,7 +222,7 @@ class DQNAgent(AbstractDQNAgent):
     def update_target_model_hard(self):
         self.target_model.set_weights(self.model.get_weights())
 
-    def forward(self, observation):
+    def forward(self, observation, test=0):
         # Select an action.
         state = self.memory.get_recent_state(observation)
         q_values = self.compute_q_values(state)
@@ -234,7 +234,8 @@ class DQNAgent(AbstractDQNAgent):
         # Book-keeping.
         self.recent_observation = observation
         self.recent_action = action
-
+        if test:
+            return action, q_values
         return action
 
     def backward(self, reward, terminal):
