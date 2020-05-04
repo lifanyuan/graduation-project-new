@@ -179,12 +179,12 @@ class Traffic:
         for i in self.bveh:  # 计算完成，解除对基站车辆的占用
             i.choice = -2
         if test:
-            reward = round(reward / 1e6, 1)
+            reward /= 28e6
         return reward
 
     def step(self, action, test=0):  # action目前仅仅是index 如果test=1，缩小reward方便调试
         self.n_step += 1
-        reward = self.evaluate(action, test) / 28e6  # 当前总计算率
+        reward = (self.evaluate(action, test) - self.evaluate(0, test)) / 28e6  # 当前总计算率
         # self.comrate_his.append(comrate_sum)
         # assert self.n_step == len(self.comrate_his), '长度不相等'
         self.renew_traffic()  # 刷新环境
@@ -230,18 +230,18 @@ if __name__ == "__main__":
     optimal_reward = []
     actions_all = np.zeros((243, 5), dtype='int_')
     a = np.array([-1, -1, -1, -1, -1], dtype='int_')
-    for i in range(243):
-        actions_all[i] = a
-        if a[-1] != 1:  # ****0
-            a[-1] += 1
-        elif a[-2] != 1:  # ***01
-            a[-2], a[-1] = a[-2] + 1, -1
-        elif a[-3] != 1:  # **011
-            a[-3], a[-2], a[-1] = a[-3] + 1, -1, -1
-        elif a[-4] != 1:  # *0111
-            a[-4], a[-3], a[-2], a[-1] = a[-4] + 1, -1, -1, -1
-        else:  # *1111
-            a[:] = a[0] + 1, -1, -1, -1, -1
+    # for i in range(243):
+    #     actions_all[i] = a
+    #     if a[-1] != 1:  # ****0
+    #         a[-1] += 1
+    #     elif a[-2] != 1:  # ***01
+    #         a[-2], a[-1] = a[-2] + 1, -1
+    #     elif a[-3] != 1:  # **011
+    #         a[-3], a[-2], a[-1] = a[-3] + 1, -1, -1
+    #     elif a[-4] != 1:  # *0111
+    #         a[-4], a[-3], a[-2], a[-1] = a[-4] + 1, -1, -1, -1
+    #     else:  # *1111
+    #         a[:] = a[0] + 1, -1, -1, -1, -1
     # # print(actions_all)
     # for i in range(32):  # 生成所有可能的决策
     #     s = bin(i).split('b')[1]
@@ -275,9 +275,9 @@ if __name__ == "__main__":
     for i in range(1000):
         reward_action = []
         for j in range(243):  # 生成所有可能的决策
-            a = actions_all[j]
-            r = test.evaluate(a, test=0)
+            r = round(test.evaluate(j, test=1)-test.evaluate(0, test=1), 5)
             reward_all[j] = r
+            a = test.actions_all[j]
             reward_action.append((r, a))
         reward_max = np.argmax(reward_all)
         users_x = np.array([i.x for i in test.uveh])
@@ -286,11 +286,14 @@ if __name__ == "__main__":
         optimal_reward.append(reward_all[reward_max])
         optimal_choice.append(list(actions_all[reward_max]))
         optimal.append((x_average, reward_all[reward_max], list(actions_all[reward_max])))
-        a = np.random.randint(-1, 2, size=5)  # 随机决策
+        # a = np.random.randint(-1, 2, size=5)  # 随机决策
+        a = np.random.randint(0, 243)
         action_his.append(a)
         observation, reward, done, _ = test.step(a, test=0)
         observation_his.append(observation)
         reward_his.append(reward)
+        if i == 20:
+            _ = 0
         if done:
             print("done with steps equaling ", i)
             break
