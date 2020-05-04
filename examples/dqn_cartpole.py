@@ -7,6 +7,7 @@ from keras.optimizers import Adam
 
 from rl.agents.dqn import DQNAgent
 from rl.policy import BoltzmannQPolicy
+from rl.policy import EpsGreedyQPolicy
 from rl.memory import SequentialMemory
 from h_generation_based_on_traffic import Traffic
 
@@ -35,8 +36,9 @@ print(model.summary())
 # Finally, we configure and compile our agent. You can use every built-in Keras optimizer and
 # even the metrics!
 memory = SequentialMemory(limit=1000000, window_length=1)  # 记忆大小
-policy = BoltzmannQPolicy()
-dqn = DQNAgent(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=10,
+# policy = BoltzmannQPolicy()
+policy = EpsGreedyQPolicy()
+dqn = DQNAgent(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=199,
                target_model_update=1e-2, policy=policy, gamma=0)
 dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
