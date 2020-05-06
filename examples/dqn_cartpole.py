@@ -39,16 +39,16 @@ memory = SequentialMemory(limit=1000000, window_length=1)  # 记忆大小
 # policy = BoltzmannQPolicy()
 policy = EpsGreedyQPolicy()
 dqn = DQNAgent(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=199,
-               target_model_update=1e-2, policy=policy, gamma=0)
+               target_model_update=1e-2, policy=policy, gamma=0.9)
 dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
 # Okay, now it's time to learn something! We visualize the training here for show, but this
 # slows down training quite a lot. You can always safely abort the training prematurely using
 # Ctrl + C.
-dqn.fit(env, nb_steps=50000, visualize=False, verbose=2)
+dqn.fit(env, nb_steps=10000, visualize=False, verbose=2)
 
 # # After training is done, we save the final weights.
-# dqn.save_weights('dqn_{}_weights.h5f'.format(ENV_NAME), overwrite=True)
+dqn.save_weights('dqn_{}_weights.h5f'.format(ENV_NAME), overwrite=True)
 # dqn.load_weights('dqn_{}_weights.h5f'.format(ENV_NAME))
 # Finally, evaluate our algorithm for 5 episodes.
 dqn.test(env, nb_episodes=20, visualize=False)
