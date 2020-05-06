@@ -193,7 +193,7 @@ class Traffic:
         observ = self.get_observation(test)  # 生成环境值
         users_location_x = [i.x for i in self.uveh]
         done = all(map(lambda x: x > self.road_length, users_location_x))  # 检查车辆位置是否超过AP覆盖范围
-        done = self.n_step == 70
+        # done = self.n_step == 70
         info = {}
         # if done:
         #     reward = np.mean(self.comrate_his)
