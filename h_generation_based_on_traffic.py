@@ -151,9 +151,11 @@ class Traffic:
         a_v2v = np.nonzero(action >= 0)[0]  # all indices of vehicles in v2v mode
         # print(a_v2i)
         w_sum = np.sum([self.uveh[i].w for i in a_v2i])  # 所有v2i车辆的权重和
+        for i in self.bveh:  # 计算完成，解除对基站车辆的占用
+            i.choice = -2
         if np.size(a_v2i):
             for i in a_v2i:  # 给出所有选择v2i车辆的属性
-                # self.uveh[i].choice = -1
+                self.uveh[i].choice = -1
                 if self.uveh[i].x <= self.road_length:
                     self.uveh[i].computation_rate = self.uveh[i].w * self.ci(i) / w_sum
                 else:
@@ -176,8 +178,6 @@ class Traffic:
                     # print('被占用的base序号为：', j, '  其选择为:', self.bveh[j].choice)
                     self.uveh[a_v2v[i]].computation_rate = 0
         reward = np.sum([i.computation_rate for i in self.uveh])  # 总reward
-        for i in self.bveh:  # 计算完成，解除对基站车辆的占用
-            i.choice = -2
         if test:
             reward /= 28e6
         return reward
@@ -279,12 +279,16 @@ if __name__ == "__main__":
             reward_all[j] = r
             a = test.actions_all[j]
             reward_action.append((r, a))
-        reward_max = np.argmax(reward_all)
+        small_to_large = np.argsort(reward_all)  # 最差选择到最佳选择
+        actions_s2l = test.actions_all[small_to_large]
+        reward_s2l = reward_all[small_to_large]
+
+        reward_max = np.argmax(reward_all)  # 最佳选择的action index
         users_x = np.array([i.x for i in test.uveh])
-        x_average = int(np.mean(users_x))
+        x_average = int(np.mean(users_x))  # 车辆的平均位置
         x_his.append(x_average)
-        optimal_reward.append(reward_all[reward_max])
-        optimal_choice.append(list(actions_all[reward_max]))
+        optimal_reward.append(reward_all[reward_max])   # 最佳reward的list
+        optimal_choice.append(list(actions_all[reward_max]))  # 最佳选择的list
         optimal.append((x_average, reward_all[reward_max], list(actions_all[reward_max])))
         # a = np.random.randint(-1, 2, size=5)  # 随机决策
         a = np.random.randint(0, 243)
@@ -297,6 +301,13 @@ if __name__ == "__main__":
         if done:
             print("done with steps equaling ", i)
             break
+
+    # env.actions_all[action]
+    # [(round(env.evaluate(j, 1) - env.evaluate(0, 1), 5), env.actions_all[j]) for j in range(243)]
+    # [(round(q_values[j] * 100, 4), env.actions_all[j], j) for j in range(243)]
+    # (np.argmax(q_values), round(env.evaluate(np.argmax(q_values), 1) - env.evaluate(0, 1), 5),
+    #  env.actions_all[np.argmax(q_values)])
+    # (round(q_values[np.argmax(q_values)] * 100, 4), env.actions_all[np.argmax(q_values)], np.argmax(q_values))
 
     # plt.plot(x_his, optimal_reward)
     # plt.show()

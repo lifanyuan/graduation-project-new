@@ -1,6 +1,8 @@
 import numpy as np
 import gym
-
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Flatten
 from keras.optimizers import Adam
@@ -10,6 +12,32 @@ from rl.policy import BoltzmannQPolicy
 from rl.policy import EpsGreedyQPolicy
 from rl.memory import SequentialMemory
 from h_generation_based_on_traffic import Traffic
+
+
+def plot(history, window_length=10):
+    h = history.history['episode_reward']
+    h_mean = [np.mean(h[i:i + window_length]) for i in range(len(h))]
+    # fig = plt.figure()
+    # ax = fig.add_subplot(121)
+    plt.plot(h, label='reward')
+    plt.plot(h_mean, label='%d moving average reward' % window_length)
+    plt.xlabel('x-episodes')
+    plt.ylabel('y-reward history')
+    plt.legend()
+    # ax.set_title('Episode_reward')
+    # ax.set_xlabel('episode')
+    # ax = fig.add_subplot(122)
+    # ax.plot(x, l)
+    # ax.set_title('Loss')
+    # ax.set_xlabel('episode')
+    plt.show()
+
+
+def save_history(history, name):
+    name = os.path.join('history', name)
+    df = pd.DataFrame.from_dict(history)
+    df.to_csv(name, index=False, encoding='utf-8')
+
 
 ENV_NAME = 'CartPole-v0'
 
@@ -45,10 +73,14 @@ dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 # Okay, now it's time to learn something! We visualize the training here for show, but this
 # slows down training quite a lot. You can always safely abort the training prematurely using
 # Ctrl + C.
-dqn.fit(env, nb_steps=10000, visualize=False, verbose=2)
+train_history = dqn.fit(env, nb_steps=10000, visualize=False, verbose=2)
 
 # # After training is done, we save the final weights.
 dqn.save_weights('dqn_{}_weights.h5f'.format(ENV_NAME), overwrite=True)
 # dqn.load_weights('dqn_{}_weights.h5f'.format(ENV_NAME))
 # Finally, evaluate our algorithm for 5 episodes.
-dqn.test(env, nb_episodes=20, visualize=False)
+test_history = dqn.test(env, nb_episodes=20, visualize=False)
+# save_history(history, 'dqn.csv')
+plot(train_history, 10)
+ave_test = np.mean(test_history.history['episode_reward'])
+print('average training reward:', '%.3f' % ave_test)
