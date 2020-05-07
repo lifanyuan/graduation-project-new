@@ -23,6 +23,7 @@ class Traffic:
         self.ap_position = (self.road_length / 2, 0)  # AP position [x, y]
         self.ap_height = 30  # AP antenna height m
         self.ap_gain = 10  # AP 天线增益
+        self.ap_f = 1e9  # ap 计算机性能
         # 通信参数
         self.veh_gain = 2  # 车辆天线增益
         self.fc = 915e6  # carrier frequency
@@ -30,7 +31,7 @@ class Traffic:
         self.bandwidth = 2e6  # B=2MHz
         self.noise = 1e-10  # receiver noise power N=10^-10
         # 其他参数
-        self.phi = 1000  # number of cycles needed to execute a bit of input task file
+        self.phi = 100  # number of cycles needed to execute a bit of input task file
         self.observ_dim = 2 * n_uveh + 2 * n_bveh
         self.n_step = 0  # 统计步数
         self.n_actions = (n_bveh + 1) ** n_uveh  # action空间的大小
@@ -152,15 +153,15 @@ class Traffic:
         action = self.actions_all[a]
         a_v2i = np.nonzero(action == -1)[0]  # all indices of vehicles in v2i mode
         a_v2v = np.nonzero(action >= 0)[0]  # all indices of vehicles in v2v mode
-        # print(a_v2i)
-        w_sum = np.sum([self.uveh[i].w for i in a_v2i])  # 所有v2i车辆的权重和
         for i in self.bveh:  # 计算完成，解除对基站车辆的占用
             i.choice = -2
         if np.size(a_v2i):
+            c_all = [self.ci(i) for i in a_v2i]  # channel capacity of all v2i vehicles
             for i in a_v2i:  # 给出所有选择v2i车辆的属性
                 self.uveh[i].choice = -1
                 if self.uveh[i].x <= self.road_length:
-                    self.uveh[i].computation_rate = self.uveh[i].w * self.ci(i) / w_sum
+                    # self.uveh[i].computation_rate = self.uveh[i].w * self.ci(i) / w_sum
+                    self.uveh[i].computation_rate = self.ap_f * self.ci(i) / (self.phi * np.sum(c_all) + self.ap_f)
                 else:
                     self.uveh[i].computation_rate = 0  # 允许范围之外的车辆选择，但是给出低reward
                 # try:
@@ -278,7 +279,7 @@ if __name__ == "__main__":
     for i in range(1000):
         reward_action = []
         for j in range(243):  # 生成所有可能的决策
-            r = round(test.evaluate(j, test=1)-test.evaluate(0, test=1), 5)
+            r = round(test.evaluate(j, test=1) - test.evaluate(0, test=1), 5)
             reward_all[j] = r
             a = test.actions_all[j]
             reward_action.append((r, a))
