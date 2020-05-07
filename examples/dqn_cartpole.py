@@ -81,6 +81,6 @@ dqn.save_weights('dqn_{}_weights.h5f'.format(ENV_NAME), overwrite=True)
 # Finally, evaluate our algorithm for 5 episodes.
 test_history = dqn.test(env, nb_episodes=20, visualize=False)
 # save_history(history, 'dqn.csv')
-plot(train_history, 10)
 ave_test = np.mean(test_history.history['episode_reward'])
 print('average training reward:', '%.3f' % ave_test)
+plot(train_history, 10)
