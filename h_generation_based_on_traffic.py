@@ -191,7 +191,7 @@ class Traffic:
 
     def step(self, action, test=0):  # action目前仅仅是index 如果test=1，缩小reward方便调试
         self.n_step += 1
-        reward = (self.evaluate(action, test) - self.evaluate(1, test)) / 28e6  # 当前总计算率
+        reward = (self.evaluate(action, test) - self.evaluate(0, test)) / 28e6  # 当前总计算率
         # self.comrate_his.append(comrate_sum)
         # assert self.n_step == len(self.comrate_his), '长度不相等'
         self.renew_traffic()  # 刷新环境
@@ -219,7 +219,7 @@ class Car:
         self.choice = -2  # 对用户车辆来说，-1代表采用v2i，大于等于0代表v2v里面，选择卸载的目标基站车辆序号
         # 对基站车辆来说，序号（大于等于0）代表与其配对的用户车辆,-2代表尚未被选择
         self.computation_rate = 0  # 仅对用户车辆有效
-        self.f = 1e8  # CPU转速，cycles per second， 仅对基站车辆有效
+        self.f = 5e8  # CPU转速，cycles per second， 仅对基站车辆有效
 
 
 if __name__ == "__main__":
@@ -283,7 +283,7 @@ if __name__ == "__main__":
     for i in range(1000):
         reward_action = []
         for j in range(243):  # 生成所有可能的决策
-            r = round(test.evaluate(j, test=1) - test.evaluate(1, test=1), 5)  # 尝试偏置的大小
+            r = round(test.evaluate(j, test=1) - test.evaluate(0, test=1), 5)  # 尝试偏置的大小
             tau_all[j] = test.evaluate(j,test=2)
             reward_all[j] = r
             a = test.actions_all[j]
