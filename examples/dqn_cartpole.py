@@ -17,10 +17,12 @@ from h_generation_based_on_traffic import Traffic
 def plot(history, window_length=10):
     h = history.history['episode_reward']
     h_mean = [np.mean(h[i:i + window_length]) for i in range(len(h))]
+    h_mean2 = [np.mean(h[i:i + 3*window_length]) for i in range(len(h))]
     # fig = plt.figure()
     # ax = fig.add_subplot(121)
     plt.plot(h, label='reward')
     plt.plot(h_mean, label='%d moving average reward' % window_length)
+    plt.plot(h_mean2, label='%d moving average reward' % (3*window_length))
     plt.xlabel('x-episodes')
     plt.ylabel('y-reward history')
     plt.legend()
@@ -73,7 +75,7 @@ dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 # Okay, now it's time to learn something! We visualize the training here for show, but this
 # slows down training quite a lot. You can always safely abort the training prematurely using
 # Ctrl + C.
-train_history = dqn.fit(env, nb_steps=10000, visualize=False, verbose=2)
+train_history = dqn.fit(env, nb_steps=20000, visualize=False, verbose=2)
 
 # # After training is done, we save the final weights.
 dqn.save_weights('dqn_{}_weights.h5f'.format(ENV_NAME), overwrite=True)

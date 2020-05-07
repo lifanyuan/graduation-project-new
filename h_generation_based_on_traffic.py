@@ -18,7 +18,7 @@ class Traffic:
         # 车辆移动模型参数
         self.alpha_veh = 0.9  # alpha parameter of the Gauss-Markov Mobility Model
         self.mu_veh = 40 / 3.6  # mu is the asymptotic mean of vn, when n approaches infinity
-        self.sigma_veh = 5  # sigma is the asymptotic standard deviation of vn when n approaches infinity
+        self.sigma_veh = 3  # sigma is the asymptotic standard deviation of vn when n approaches infinity
         # ap参数
         self.ap_position = (self.road_length / 2, 0)  # AP position [x, y]
         self.ap_height = 30  # AP antenna height m
@@ -188,7 +188,7 @@ class Traffic:
 
     def step(self, action, test=0):  # action目前仅仅是index 如果test=1，缩小reward方便调试
         self.n_step += 1
-        reward = (self.evaluate(action, test) - self.evaluate(0, test)) / 28e6  # 当前总计算率
+        reward = (self.evaluate(action, test) - self.evaluate(1, test)) / 28e6  # 当前总计算率
         # self.comrate_his.append(comrate_sum)
         # assert self.n_step == len(self.comrate_his), '长度不相等'
         self.renew_traffic()  # 刷新环境
@@ -279,7 +279,7 @@ if __name__ == "__main__":
     for i in range(1000):
         reward_action = []
         for j in range(243):  # 生成所有可能的决策
-            r = round(test.evaluate(j, test=1) - test.evaluate(0, test=1), 5)
+            r = round(test.evaluate(j, test=1) - test.evaluate(1, test=1), 5)  # 尝试偏置的大小
             reward_all[j] = r
             a = test.actions_all[j]
             reward_action.append((r, a))
