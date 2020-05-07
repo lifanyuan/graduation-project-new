@@ -23,7 +23,7 @@ class Traffic:
         self.ap_position = (self.road_length / 2, 0)  # AP position [x, y]
         self.ap_height = 30  # AP antenna height m
         self.ap_gain = 10  # AP 天线增益
-        self.ap_f = 1e9  # ap 计算机性能
+        self.ap_f = 3e9  # ap 计算机性能
         # 通信参数
         self.veh_gain = 2  # 车辆天线增益
         self.fc = 915e6  # carrier frequency
@@ -151,23 +151,21 @@ class Traffic:
         # -1代表采用v2i，大于等于0代表v2v里面，选择卸载的目标基站车辆序号
         # assert np.all(-1<=action<=self.n_bveh-1), 'action取值错误'
         action = self.actions_all[a]
+        tau = 0
         a_v2i = np.nonzero(action == -1)[0]  # all indices of vehicles in v2i mode
         a_v2v = np.nonzero(action >= 0)[0]  # all indices of vehicles in v2v mode
         for i in self.bveh:  # 计算完成，解除对基站车辆的占用
             i.choice = -2
         if np.size(a_v2i):
             c_all = [self.ci(i) for i in a_v2i]  # channel capacity of all v2i vehicles
+            tau = self.ap_f / (self.phi * np.sum(c_all) + self.ap_f)
             for i in a_v2i:  # 给出所有选择v2i车辆的属性
                 self.uveh[i].choice = -1
                 if self.uveh[i].x <= self.road_length:
                     # self.uveh[i].computation_rate = self.uveh[i].w * self.ci(i) / w_sum
-                    self.uveh[i].computation_rate = self.ap_f * self.ci(i) / (self.phi * np.sum(c_all) + self.ap_f)
+                    self.uveh[i].computation_rate = tau * self.ci(i)
                 else:
                     self.uveh[i].computation_rate = 0  # 允许范围之外的车辆选择，但是给出低reward
-                # try:
-                #     assert self.uveh[i].x <= self.road_length  # 必须在ap范围之内
-                # except AssertionError:
-                #     print('V2I车辆不在范围内')
         if np.size(a_v2v):
             weights = np.array([self.uveh[i].w for i in a_v2v])  # 给出所有选择v2v方式车辆的weight，顺序是a_v2v的顺序
             weights_sort = np.argsort(weights)[::-1]  # 给出index，索引所有的选择v2v方式的车辆，weight从大到小排序
@@ -182,9 +180,14 @@ class Traffic:
                     # print('被占用的base序号为：', j, '  其选择为:', self.bveh[j].choice)
                     self.uveh[a_v2v[i]].computation_rate = 0
         reward = np.sum([i.computation_rate for i in self.uveh])  # 总reward
-        if test:
+        if test==2:
             reward /= 28e6
-        return reward
+            return tau
+        elif test==1:
+            reward /= 28e6
+            return reward
+        else:
+            return reward
 
     def step(self, action, test=0):  # action目前仅仅是index 如果test=1，缩小reward方便调试
         self.n_step += 1
@@ -233,6 +236,7 @@ if __name__ == "__main__":
     optimal_choice = []
     optimal_reward = []
     actions_all = np.zeros((243, 5), dtype='int_')
+    tau_all = np.zeros(243)
     a = np.array([-1, -1, -1, -1, -1], dtype='int_')
     # for i in range(243):
     #     actions_all[i] = a
@@ -280,12 +284,14 @@ if __name__ == "__main__":
         reward_action = []
         for j in range(243):  # 生成所有可能的决策
             r = round(test.evaluate(j, test=1) - test.evaluate(1, test=1), 5)  # 尝试偏置的大小
+            tau_all[j] = test.evaluate(j,test=2)
             reward_all[j] = r
             a = test.actions_all[j]
             reward_action.append((r, a))
         small_to_large = np.argsort(reward_all)  # 最差选择到最佳选择
         actions_s2l = test.actions_all[small_to_large]
         reward_s2l = reward_all[small_to_large]
+        tau_s2l = tau_all[small_to_large]
 
         reward_max = np.argmax(reward_all)  # 最佳选择的action index
         users_x = np.array([i.x for i in test.uveh])
