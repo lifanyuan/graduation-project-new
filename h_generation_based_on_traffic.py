@@ -9,36 +9,39 @@ class Traffic:
         # np.random.seed(123)
         self.n_uveh = n_uveh  # number of user vehicles.
         self.n_bveh = n_bveh  # number of base vehicles.
-        self.uveh = []  # container of User vehicles.
-        self.bveh = []  # container of Base vehicles.
+        # 路段参数
         self.road_length = 500  # length of road within the range of the AP; denoted as L.
         self.lane_width = 5  # width of each lane; there are 2 lanes in this model
         self.n_lanes = 2  # number of lanes
         self.lane1 = self.lane_width / 2  # y coordinate of the 1st lane
         self.lane2 = self.lane_width * 3 / 2  # y coordinate of the 2nd lane
+        # 车辆移动模型参数
+        self.alpha_veh = 0.9  # alpha parameter of the Gauss-Markov Mobility Model
+        self.mu_veh = 40 / 3.6  # mu is the asymptotic mean of vn, when n approaches infinity
+        self.sigma_veh = 5  # sigma is the asymptotic standard deviation of vn when n approaches infinity
+        # ap参数
         self.ap_position = (self.road_length / 2, 0)  # AP position [x, y]
         self.ap_height = 30  # AP antenna height m
         self.ap_gain = 10  # AP 天线增益
+        # 通信参数
         self.veh_gain = 2  # 车辆天线增益
-        self.v2i_channel_gain = np.zeros(n_uveh)  # V2I channel gain of each User vehicles
-        self.v2v_channel_gain = np.zeros((n_uveh, n_bveh))
-        self.distance_ij = np.zeros((n_uveh, n_bveh))  # distance between user vehicles and base vehicles
-        # V2V channel gain between User i and Base j
-        self.alpha_veh = 0.9  # alpha parameter of the Gauss-Markov Mobility Model
-        self.mu_veh = 40 / 3.6  # mu is the asymptotic mean of vn, when n approaches infinity
-        self.sigma_veh = 5
-        # sigma is the asymptotic standard deviation of vn when n approaches infinity
-        # self.ad = 4.11  # antenna gain
         self.fc = 915e6  # carrier frequency
         self.de = 2.8  # pass loss exponent2.8
         self.bandwidth = 2e6  # B=2MHz
         self.noise = 1e-10  # receiver noise power N=10^-10
+        # 其他参数
         self.phi = 1000  # number of cycles needed to execute a bit of input task file
-        self.comrate_his = []  # 按照每一步，记录所有computation rate
+        self.observ_dim = 2 * n_uveh + 2 * n_bveh
         self.n_step = 0  # 统计步数
         self.n_actions = (n_bveh + 1) ** n_uveh  # action空间的大小
+        # 容器初始化
+        self.uveh = []  # container of User vehicles.
+        self.bveh = []  # container of Base vehicles.
+        self.v2i_channel_gain = np.zeros(n_uveh)  # V2I channel gain of each User vehicles
+        self.v2v_channel_gain = np.zeros((n_uveh, n_bveh))  # V2V channel gain between User i and Base j
+        self.distance_ij = np.zeros((n_uveh, n_bveh))  # distance between user vehicles and base vehicles
+        self.comrate_his = []  # 按照每一步，记录所有computation rate
         self.action_space = spaces.Discrete(self.n_actions)
-        self.observ_dim = 2 * n_uveh + 2 * n_bveh
         self.observation_space = spaces.Box(low=-np.inf, high=+np.inf, shape=(self.observ_dim,))
         self.actions_all = np.zeros((self.n_actions, n_uveh), dtype='int_')  # action空间
         a = - np.ones((n_uveh,), dtype='int_')
