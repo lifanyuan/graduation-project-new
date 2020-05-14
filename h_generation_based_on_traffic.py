@@ -18,7 +18,7 @@ class Traffic:
         # 车辆移动模型参数
         self.alpha_veh = 0.9  # alpha parameter of the Gauss-Markov Mobility Model
         self.mu_veh = 40 / 3.6  # mu is the asymptotic mean of vn, when n approaches infinity
-        self.sigma_veh = 3  # sigma is the asymptotic standard deviation of vn when n approaches infinity
+        self.sigma_veh = 2  # sigma is the asymptotic standard deviation of vn when n approaches infinity
         # ap参数
         self.ap_position = (self.road_length / 2, 0)  # AP position [x, y]
         self.ap_height = 30  # AP antenna height m
@@ -32,7 +32,8 @@ class Traffic:
         self.noise = 1e-10  # receiver noise power N=10^-10
         # 其他参数
         self.phi = 100  # number of cycles needed to execute a bit of input task file
-        self.observ_dim = 2 * n_uveh + 2 * n_bveh
+        # self.observ_dim = 2 * n_uveh + 2 * n_bveh
+        self.observ_dim = 2 * n_uveh + 2 * n_bveh + n_bveh * n_uveh + n_uveh
         self.n_step = 0  # 统计步数
         self.n_actions = (n_bveh + 1) ** n_uveh  # action空间的大小
         # 容器初始化
@@ -137,8 +138,8 @@ class Traffic:
             observ = {'users_location_x': users_location_x, 'users_location_y': users_location_y,
                       'bases_location_x': bases_location_x, 'bases_location_y': bases_location_y, 'hi': hi, 'hij': hij}
         else:
-            # observ = np.concatenate((users_location_x, users_location_y, bases_location_x, bases_location_y, hi, hij))
-            observ = np.concatenate((users_location_x, users_location_y, bases_location_x, bases_location_y))
+            observ = np.concatenate((users_location_x, users_location_y, bases_location_x, bases_location_y, hi, hij))
+            # observ = np.concatenate((users_location_x, users_location_y, bases_location_x, bases_location_y))
         return observ
 
     def ci(self, i):  # 返回用户车辆i到AP的信道容量Ci

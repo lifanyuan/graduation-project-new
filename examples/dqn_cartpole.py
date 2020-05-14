@@ -36,12 +36,11 @@ def plot(history, window_length=10):
 
 
 def save_history(history, name):
-    name = os.path.join('history', name)
-    df = pd.DataFrame.from_dict(history)
+    name = os.path.join('../history', name)
+    df = pd.DataFrame.from_dict(history.history)
     df.to_csv(name, index=False, encoding='utf-8')
 
 
-ENV_NAME = 'CartPole-v0'
 
 # Get the environment and extract the number of actions.
 # env = gym.make(ENV_NAME)
@@ -69,20 +68,20 @@ memory = SequentialMemory(limit=1000000, window_length=1)  # 记忆大小
 # policy = BoltzmannQPolicy()
 policy = EpsGreedyQPolicy()
 dqn = DQNAgent(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=199,
-               target_model_update=1e-2, policy=policy, gamma=0.9)
+               target_model_update=1e-2, policy=policy, gamma=0.1)
 dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
 # Okay, now it's time to learn something! We visualize the training here for show, but this
 # slows down training quite a lot. You can always safely abort the training prematurely using
-# Ctrl + C.
-train_history = dqn.fit(env, nb_steps=20000, visualize=False, verbose=2)
+# Ctrl + C.20000
+train_history = dqn.fit(env, nb_steps=10000, visualize=False, verbose=2)
 
 # # After training is done, we save the final weights.
-dqn.save_weights('dqn_{}_weights.h5f'.format(ENV_NAME), overwrite=True)
+dqn.save_weights('dqn_{}_weights.h5f'.format('MECDQN'), overwrite=True)
 # dqn.load_weights('dqn_{}_weights.h5f'.format(ENV_NAME))
 # Finally, evaluate our algorithm for 5 episodes.
 test_history = dqn.test(env, nb_episodes=20, visualize=False)
-# save_history(history, 'dqn.csv')
+save_history(test_history, 'MECDQNhistory.csv')
 ave_test = np.mean(test_history.history['episode_reward'])
 print('average training reward:', '%.3f' % ave_test)
 plot(train_history, 10)
