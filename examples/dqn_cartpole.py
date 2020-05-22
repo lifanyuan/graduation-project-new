@@ -44,7 +44,7 @@ def save_history(history, name):
 
 # Get the environment and extract the number of actions.
 # env = gym.make(ENV_NAME)
-env = Traffic(5, 2)
+env = Traffic(4, 4)
 np.random.seed(123)
 # env.seed(123)
 nb_actions = env.action_space.n
@@ -67,8 +67,8 @@ print(model.summary())
 memory = SequentialMemory(limit=1000000, window_length=1)  # 记忆大小
 # policy = BoltzmannQPolicy()
 policy = EpsGreedyQPolicy()
-dqn = DQNAgent(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=199,
-               target_model_update=1e-2, policy=policy, gamma=0.1)
+dqn = DQNAgent(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=500,
+               target_model_update=1e-2, policy=policy, gamma=0.9)
 dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
 # Okay, now it's time to learn something! We visualize the training here for show, but this

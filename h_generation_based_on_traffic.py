@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-from gym import spaces, logger
+from gym import spaces  # , logger
 
 
 class Traffic:
@@ -32,13 +32,15 @@ class Traffic:
         self.noise = 1e-10  # receiver noise power N=10^-10
         # 其他参数
         self.phi = 100  # number of cycles needed to execute a bit of input task file
+        self.max_latency = 3  # 最大容许的任务时延
         # self.observ_dim = 2 * n_uveh + 2 * n_bveh
-        self.observ_dim = 2 * n_uveh + 2 * n_bveh + n_bveh * n_uveh + n_uveh
+        self.observ_dim = 2 * n_uveh + 2 * n_bveh + n_bveh * n_uveh + n_uveh + 1
         self.n_step = 0  # 统计步数
         self.n_actions = (n_bveh + 1) ** n_uveh  # action空间的大小
         # 容器初始化
         self.uveh = []  # container of User vehicles.
         self.bveh = []  # container of Base vehicles.
+        self.queue = []  # 任务队列，（te--任务刚开始上传,s--任务剩余文件大小,I--任务归属车辆编号,s0--任务初始大小)
         self.v2i_channel_gain = np.zeros(n_uveh)  # V2I channel gain of each User vehicles
         self.v2v_channel_gain = np.zeros((n_uveh, n_bveh))  # V2V channel gain between User i and Base j
         self.distance_ij = np.zeros((n_uveh, n_bveh))  # distance between user vehicles and base vehicles
@@ -65,29 +67,41 @@ class Traffic:
         # initialize the environment, generate all cars to the *left side* of the road, as well as hi and hij
         self.uveh = []
         self.bveh = []
+        self.queue = []
         self.n_step = 0
         self.comrate_his = []
         x_limit = 1 / 5  # x limitation of all new cars, ensuring new cars are on the left side of the road.
-        for i in range(self.n_uveh):  # 车辆在两个车道上随机摆放
-            if np.random.randint(self.n_lanes) == 0:  # select a lane from 2 lanes randomly
-                lane = self.lane1
-            else:
-                lane = self.lane2
-            if i % 2 == 0:  # assign a weight to each vehicle based on index
-                w = 1
-            else:
-                w = 1  # 1.5
-            x = np.random.uniform(0, x_limit * self.road_length)  # select x coordinate for a vehicle
-            self.uveh.append(Car(w=w, x=x, y=lane, v=0))  # add a User vehicle
-        for j in range(self.n_bveh):
-            if np.random.randint(self.n_lanes) == 0:  # select a lane from 2 lanes randomly
-                lane = self.lane1
-            else:
-                lane = self.lane2
-            x = np.random.uniform(0, x_limit * self.road_length)  # select x coordinate for a vehicle
-            self.bveh.append(Car(w=0, x=x, y=lane, v=0))  # add a Base vehicle
-        self.renew_v2v_channel_gain()
-        self.renew_v2i_channel_gain()
+        if test:
+            self.n_uveh, self.n_bveh = 4, 4
+            self.uveh.append(Car(1, 1 / 5 * self.road_length, self.lane2, 0))
+            self.uveh.append(Car(1, 2 / 5 * self.road_length, self.lane2, 0))
+            self.uveh.append(Car(1, 3 / 5 * self.road_length, self.lane2, 0))
+            self.uveh.append(Car(1, 4 / 5 * self.road_length, self.lane2, 0))
+            self.bveh.append(Car(1, 1 / 5 * self.road_length, self.lane1, 0))
+            self.bveh.append(Car(1, 2 / 5 * self.road_length, self.lane1, 0))
+            self.bveh.append(Car(1, 3 / 5 * self.road_length, self.lane1, 0))
+            self.bveh.append(Car(1, 4 / 5 * self.road_length, self.lane1, 0))
+        else:
+            for i in range(self.n_uveh):  # 车辆在两个车道上随机摆放
+                if np.random.randint(self.n_lanes) == 0:  # select a lane from 2 lanes randomly
+                    lane = self.lane1
+                else:
+                    lane = self.lane2
+                if i % 2 == 0:  # assign a weight to each vehicle based on index
+                    w = 1
+                else:
+                    w = 1  # 1.5
+                x = np.random.uniform(0, x_limit * self.road_length)  # select x coordinate for a vehicle
+                self.uveh.append(Car(w=w, x=x, y=lane, v=0))  # add a User vehicle
+            for j in range(self.n_bveh):
+                if np.random.randint(self.n_lanes) == 0:  # select a lane from 2 lanes randomly
+                    lane = self.lane1
+                else:
+                    lane = self.lane2
+                x = np.random.uniform(0, x_limit * self.road_length)  # select x coordinate for a vehicle
+                self.bveh.append(Car(w=0, x=x, y=lane, v=0))  # add a Base vehicle
+        self.renew_v2v_channel_gain(test)
+        self.renew_v2i_channel_gain(test)
         observ = self.get_observation(test)
         return observ  # 返回初始observation
 
@@ -103,7 +117,7 @@ class Traffic:
                         1 - self.alpha_veh ** 2) * np.random.randn() * self.sigma_veh)])  # renew v according to markov model
             self.bveh[j].x += self.bveh[j].v  # renew x according to v
 
-    def renew_v2i_channel_gain(self):  # renew the channel gain of all v2i channels
+    def renew_v2i_channel_gain(self, test=0):  # renew the channel gain of all v2i channels
         self.v2i_channel_gain = np.zeros(self.n_uveh)  # V2I channel gain of each User vehicles
         for i in range(self.n_uveh):
             dx = abs(self.uveh[i].x - self.ap_position[0])
@@ -111,10 +125,13 @@ class Traffic:
             dz = self.ap_height
             distance = math.sqrt(dx * dx + dy * dy + dz * dz)
             average = self.veh_gain * self.ap_gain * (3e8 / (4 * math.pi * self.fc * distance)) ** self.de
-            self.v2i_channel_gain[i] = average * np.random.exponential()
+            if test:
+                self.v2i_channel_gain[i] = average
+            else:
+                self.v2i_channel_gain[i] = average * np.random.exponential()
 
-    def renew_v2v_channel_gain(
-            self):  # renew the channel gain of all v2v channels and distance from user vehicles to base vehicles
+    def renew_v2v_channel_gain(self, test=0):
+        # renew the channel gain of all v2v channels and distance from user vehicles to base vehicles
         self.v2v_channel_gain = np.zeros((self.n_uveh, self.n_bveh))
         # V2V channel gain between User i and Base j
         for i in range(self.n_uveh):
@@ -124,10 +141,18 @@ class Traffic:
                 distance = np.max([math.hypot(dx, dy), 15])  # 返回欧几里德范数 sqrt(x*x + y*y)
                 self.distance_ij[i][j] = math.hypot(dx, dy)
                 average = self.veh_gain * self.veh_gain * (3e8 / (4 * math.pi * self.fc * distance)) ** self.de
-                self.v2v_channel_gain[i][j] = average * np.random.exponential()
+                if test:
+                    self.v2v_channel_gain[i][j] = average
+                else:
+                    self.v2v_channel_gain[i][j] = average * np.random.exponential()
 
     def get_observation(self, test=0):  # 得到目前的环境observation值
-        gain_x, gain_h = 0.05, 8e8  # 为使状态变量接近1
+        if test:
+            gain_x, gain_h, gain_q = 1, 1, 1
+        else:
+            gain_x, gain_h, gain_q = 0.05, 8e8, 3e-8  # 为使状态变量接近1
+        queue_size = sum([i[1] for i in self.queue]) * gain_q
+        queue_size = np.array([queue_size])
         users_location_x = np.array([i.x for i in self.uveh]) * gain_x
         users_location_y = np.array([i.y for i in self.uveh])
         bases_location_x = np.array([i.x for i in self.bveh]) * gain_x
@@ -135,10 +160,12 @@ class Traffic:
         hi = self.v2i_channel_gain * gain_h
         hij = self.v2v_channel_gain.ravel() * gain_h
         if test:
-            observ = {'users_location_x': users_location_x, 'users_location_y': users_location_y,
+            observ = {'queue_size': queue_size[0], 'users_location_x': users_location_x,
+                      'users_location_y': users_location_y,
                       'bases_location_x': bases_location_x, 'bases_location_y': bases_location_y, 'hi': hi, 'hij': hij}
         else:
-            observ = np.concatenate((users_location_x, users_location_y, bases_location_x, bases_location_y, hi, hij))
+            observ = np.concatenate(
+                (queue_size, users_location_x, users_location_y, bases_location_x, bases_location_y, hi, hij))
             # observ = np.concatenate((users_location_x, users_location_y, bases_location_x, bases_location_y))
         return observ
 
@@ -148,56 +175,61 @@ class Traffic:
     def cij(self, i, j):  # 返回用户车辆i到基站车辆j的信道容量Cij
         return self.bandwidth * np.log2(1 + self.uveh[i].p * self.v2v_channel_gain[i, j] / self.noise)
 
-    def evaluate(self, a, test=0):  # 得到action的总computation rate   如果test=1，缩小reward方便调试
-        # -1代表采用v2i，大于等于0代表v2v里面，选择卸载的目标基站车辆序号
-        # assert np.all(-1<=action<=self.n_bveh-1), 'action取值错误'
-        action = self.actions_all[a]
-        tau = 0
-        a_v2i = np.nonzero(action == -1)[0]  # all indices of vehicles in v2i mode
-        a_v2v = np.nonzero(action >= 0)[0]  # all indices of vehicles in v2v mode
+    def step(self, action, test=0):  # action目前仅仅是index 如果test=1，缩小reward方便调试
+        comrate_v2v = np.zeros(self.n_uveh)  # 记录v2v车辆在本帧的计算率，序号为v2i车辆的元素必为0
+        a = self.actions_all[action]  # decode action
+        a_v2i = np.nonzero(a == -1)[0]  # all indices of vehicles in v2i mode
+        a_v2v = np.nonzero(a >= 0)[0]  # all indices of vehicles in v2v mode
         for i in self.bveh:  # 计算完成，解除对基站车辆的占用
             i.choice = -2
-        if np.size(a_v2i):
-            c_all = [self.ci(i) for i in a_v2i]  # channel capacity of all v2i vehicles
-            tau = self.ap_f / (self.phi * np.sum(c_all) + self.ap_f)
-            for i in a_v2i:  # 给出所有选择v2i车辆的属性
-                self.uveh[i].choice = -1
-                if self.uveh[i].x <= self.road_length:
-                    # self.uveh[i].computation_rate = self.uveh[i].w * self.ci(i) / w_sum
-                    self.uveh[i].computation_rate = tau * self.ci(i)
-                else:
-                    self.uveh[i].computation_rate = 0  # 允许范围之外的车辆选择，但是给出低reward
+        for i in self.uveh:
+            i.choice = -2
         if np.size(a_v2v):
-            weights = np.array([self.uveh[i].w for i in a_v2v])  # 给出所有选择v2v方式车辆的weight，顺序是a_v2v的顺序
-            weights_sort = np.argsort(weights)[::-1]  # 给出index，索引所有的选择v2v方式的车辆，weight从大到小排序
-            # dij = self.distance_ij.copy()  # 得到距离的副本
-            for i in weights_sort:  # 得到所有v2v车辆对基站车辆的选择# 得到计算速率
-                j = action[a_v2v[i]]  # a_v2v[i]代表经过权重排序后的user车辆序号，相当于序号的映射变换
+            for i in a_v2v:  # 得到所有v2v车辆对基站车辆的选择# 得到计算速率
+                j = a[i]  # user[i]必是v2v
                 if self.bveh[j].choice == -2:  # 对基站车辆来说，序号（大于等于0）代表与其配对的用户车辆,-2代表尚未被选择
-                    self.bveh[j].choice = a_v2v[i]
-                    self.uveh[a_v2v[i]].computation_rate = self.cij(i, j) * self.bveh[int(j)].f / (
+                    self.bveh[j].choice = i
+                    self.uveh[i].choice = j
+                    comrate_v2v[i] = self.cij(i, j) * self.bveh[int(j)].f / (
                             self.cij(i, j) * self.phi + self.bveh[int(j)].f)
                 else:
                     # print('被占用的base序号为：', j, '  其选择为:', self.bveh[j].choice)
-                    self.uveh[a_v2v[i]].computation_rate = 0
-        reward = np.sum([i.computation_rate for i in self.uveh])  # 总reward
-        if test==2:
-            reward /= 28e6
-            return tau
-        elif test==1:
-            reward /= 28e6
-            return reward
-        else:
-            return reward
-
-    def step(self, action, test=0):  # action目前仅仅是index 如果test=1，缩小reward方便调试
+                    comrate_v2v[i] = 0
+        comrate_sum_v2v = sum(comrate_v2v)
+        #  下面开始v2i模式(计算部件工作）
+        comrate_sum_v2i = 0
+        t_current = 0
+        while True:
+            if self.queue:  # 目前的时间为帧头时间+t_current
+                task = self.queue[0]  # 队头任务,深复制
+                t_task = task[1] * self.phi / self.ap_f  # 任务完成所需时间
+                t_latency = t_current + t_task + self.n_step - task[0]  # 任务的延时
+                if t_latency > self.max_latency:  # 任务完成将超过最大时延
+                    del self.queue[0]  # 放弃该任务，弹出队列
+                elif t_current + t_task > 1:  # 任务无法在该帧完成
+                    t_left = 1 - t_current  # 帧里剩余时间
+                    s = self.ap_f / self.phi * t_left  # 剩余时间内可执行的任务量
+                    task[1] -= s
+                    break
+                else:
+                    del self.queue[0]  # finish该任务，弹出队列
+                    t_current += t_task  # 推进现在时间
+                    if self.uveh[task[2]].x <= self.road_length:  # 如果不在范围内，则不增加总计算率。
+                        comrate_sum_v2i += task[3]  # 增加总计算率
+            else:
+                break  # 所有队列的积压任务在本帧计算完毕，还剩一定空闲时间。
+        if np.size(a_v2i):  # 通信部件的工作：上传任务文件并加入队列,此时在帧的*开头*
+            for i in a_v2i:
+                self.uveh[i].choice = -1
+                # (te--任务刚开始上传的时间,s--任务剩余文件大小,I--任务归属车辆编号,s0--任务初始大小)
+                if self.uveh[i].x <= self.road_length:  # 如果不在范围内，则不允许加入任务队列。
+                    self.queue.append([self.n_step, self.ci(i), i, self.ci(i)])  # 任务信息进入队列
         self.n_step += 1
-        reward = (self.evaluate(action, test) - self.evaluate(0, test)) / 28e6  # 当前总计算率
-        # self.comrate_his.append(comrate_sum)
-        # assert self.n_step == len(self.comrate_his), '长度不相等'
-        self.renew_traffic()  # 刷新环境
-        self.renew_v2v_channel_gain()
-        self.renew_v2i_channel_gain()
+        reward = (comrate_sum_v2i + comrate_sum_v2v)/28e6
+        if not test:
+            self.renew_traffic()  # 刷新环境
+        self.renew_v2v_channel_gain(test)
+        self.renew_v2i_channel_gain(test)
         observ = self.get_observation(test)  # 生成环境值
         users_location_x = [i.x for i in self.uveh]
         done = all(map(lambda x: x > self.road_length, users_location_x))  # 检查车辆位置是否超过AP覆盖范围
@@ -220,13 +252,21 @@ class Car:
         self.choice = -2  # 对用户车辆来说，-1代表采用v2i，大于等于0代表v2v里面，选择卸载的目标基站车辆序号
         # 对基站车辆来说，序号（大于等于0）代表与其配对的用户车辆,-2代表尚未被选择
         self.computation_rate = 0  # 仅对用户车辆有效
-        self.f = 5e8  # CPU转速，cycles per second， 仅对基站车辆有效
+        self.f = 8e8  # CPU转速，cycles per second， 仅对基站车辆有效
 
 
 if __name__ == "__main__":
-    test = Traffic(5, 2)  # 5users, 2bases
+    test = Traffic(4, 4)  # 5users, 2bases
     steps = 0
     observation = test.reset(test=0)
+    observation, reward, done, _ = test.step(604, test=0)
+    observation, reward, done, _ = test.step(0, test=0)
+    observation, reward, done, _ = test.step(0, test=0)
+    observation, reward, done, _ = test.step(0, test=0)
+    observation, reward, done, _ = test.step(0, test=0)
+    observation, reward, done, _ = test.step(156, test=0)
+    observation, reward, done, _ = test.step(156, test=0)
+    observation, reward, done, _ = test.step(155, test=0)
     action_his = []
     observation_his = [observation]
     reward_his = []
@@ -279,13 +319,13 @@ if __name__ == "__main__":
     #         test.env_init(test=0)
     #         reward_sum = 0
     # print('mean={:.2e}'.format(np.mean(reward_his)))
-
+'''
     test.reset(test=0)
     for i in range(1000):
         reward_action = []
         for j in range(243):  # 生成所有可能的决策
             r = round(test.evaluate(j, test=1) - test.evaluate(0, test=1), 5)  # 尝试偏置的大小
-            tau_all[j] = test.evaluate(j,test=2)
+            tau_all[j] = test.evaluate(j, test=2)
             reward_all[j] = r
             a = test.actions_all[j]
             reward_action.append((r, a))
@@ -298,7 +338,7 @@ if __name__ == "__main__":
         users_x = np.array([i.x for i in test.uveh])
         x_average = int(np.mean(users_x))  # 车辆的平均位置
         x_his.append(x_average)
-        optimal_reward.append(reward_all[reward_max])   # 最佳reward的list
+        optimal_reward.append(reward_all[reward_max])  # 最佳reward的list
         optimal_choice.append(list(actions_all[reward_max]))  # 最佳选择的list
         optimal.append((x_average, reward_all[reward_max], list(actions_all[reward_max])))
         # a = np.random.randint(-1, 2, size=5)  # 随机决策
@@ -360,3 +400,4 @@ if __name__ == "__main__":
     # plt.sca(subplot2)
     # plt.plot(np.log10(position2), color='red')
     # plt.show()
+'''
