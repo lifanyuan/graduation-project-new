@@ -1,5 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import math
 from gym import spaces  # , logger
 
@@ -225,7 +225,10 @@ class Traffic:
                 if self.uveh[i].x <= self.road_length:  # 如果不在范围内，则不允许加入任务队列。
                     self.queue.append([self.n_step, self.ci(i), i, self.ci(i)])  # 任务信息进入队列
         self.n_step += 1
-        reward = (comrate_sum_v2i + comrate_sum_v2v)/28e6
+        bias = 0
+        for i in range(4):
+            bias += self.cij(i, i) * self.bveh[i].f / (self.cij(i, i) * self.phi + self.bveh[i].f)
+        reward = (comrate_sum_v2i + comrate_sum_v2v - bias)/28e6
         if not test:
             self.renew_traffic()  # 刷新环境
         self.renew_v2v_channel_gain(test)
