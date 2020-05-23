@@ -71,17 +71,11 @@ dqn = DQNAgent(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmu
                target_model_update=1e-2, policy=policy, gamma=0.8)
 dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
-# Okay, now it's time to learn something! We visualize the training here for show, but this
-# slows down training quite a lot. You can always safely abort the training prematurely using
-# Ctrl + C.20000
-train_history = dqn.fit(env, nb_steps=30000, visualize=False, verbose=2)
-
 # # After training is done, we save the final weights.
-dqn.save_weights('dqn_{}_weights.h5f'.format('MECDQN'), overwrite=True)
-# dqn.load_weights('dqn_{}_weights.h5f'.format(ENV_NAME))
+dqn.load_weights('../network_parameter/dqn_MECDQN_weights.h5f')
 # Finally, evaluate our algorithm for some episodes.
 test_history = dqn.test(env, nb_episodes=20, visualize=False)
-save_history(train_history, 'MECDQNhistory.csv')
 ave_test = np.mean(test_history.history['episode_reward'])
+ave_comrate = np.mean(test_history.history['computation_rate'])
 print('average training reward:', '%.3f' % ave_test)
-plot(train_history, 10)
+print('average training reward:', '%.3e' % ave_comrate)

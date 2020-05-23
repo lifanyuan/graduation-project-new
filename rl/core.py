@@ -354,6 +354,7 @@ class Agent(object):
 
             # Run the episode until we're done.
             done = False
+            comrate = 0
             while not done:
                 callbacks.on_step_begin(episode_step)
 
@@ -392,6 +393,7 @@ class Agent(object):
                     'episode': episode,
                     'info': accumulated_info,
                 }
+                comrate += info['comrate']
                 callbacks.on_step_end(episode_step, step_logs)
                 episode_step += 1
                 self.step += 1
@@ -408,6 +410,7 @@ class Agent(object):
             episode_logs = {
                 'episode_reward': episode_reward,
                 'nb_steps': episode_step,
+                'computation_rate': comrate
             }
             callbacks.on_episode_end(episode, episode_logs)
         callbacks.on_train_end()

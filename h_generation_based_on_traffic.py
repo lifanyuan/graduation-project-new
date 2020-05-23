@@ -226,9 +226,10 @@ class Traffic:
                     self.queue.append([self.n_step, self.ci(i), i, self.ci(i)])  # 任务信息进入队列
         self.n_step += 1
         bias = 0
-        for i in range(4):
+        for i in range(self.n_uveh):
             bias += self.cij(i, i) * self.bveh[i].f / (self.cij(i, i) * self.phi + self.bveh[i].f)
-        reward = (comrate_sum_v2i + comrate_sum_v2v - bias)/28e6
+        comrate_sum = comrate_sum_v2i + comrate_sum_v2v
+        reward = (comrate_sum - 1.5*bias)/28e6
         if not test:
             self.renew_traffic()  # 刷新环境
         self.renew_v2v_channel_gain(test)
@@ -237,7 +238,7 @@ class Traffic:
         users_location_x = [i.x for i in self.uveh]
         done = all(map(lambda x: x > self.road_length, users_location_x))  # 检查车辆位置是否超过AP覆盖范围
         # done = self.n_step == 70
-        info = {}
+        info = {'comrate': comrate_sum}
         # if done:
         #     reward = np.mean(self.comrate_his)
         # else:

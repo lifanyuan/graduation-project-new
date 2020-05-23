@@ -111,10 +111,11 @@ class TestLogger(Callback):
 
     def on_episode_end(self, episode, logs):
         """ Print logs at end of each episode """
-        template = 'Episode {0}: reward: {1:.3f}, steps: {2}'
+        template = 'Episode {0}: reward: {1:.3f}, computation rate: {2:.3e} steps: {3}'
         variables = [
             episode + 1,
             logs['episode_reward'],
+            logs['computation_rate'],
             logs['nb_steps'],
         ]
         print(template.format(*variables))
