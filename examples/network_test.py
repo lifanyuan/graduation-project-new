@@ -45,7 +45,7 @@ def save_history(history, name):
 # Get the environment and extract the number of actions.
 # env = gym.make(ENV_NAME)
 env = Traffic(4, 4)
-np.random.seed(123)
+# np.random.seed(123)
 # env.seed(123)
 nb_actions = env.action_space.n
 
@@ -74,8 +74,13 @@ dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 # # After training is done, we save the final weights.
 dqn.load_weights('../network_parameter/dqn_MECDQN_weights.h5f')
 # Finally, evaluate our algorithm for some episodes.
-test_history = dqn.test(env, nb_episodes=20, visualize=False)
+test_history = dqn.test(env, nb_episodes=30, visualize=False)
 ave_test = np.mean(test_history.history['episode_reward'])
 ave_comrate = np.mean(test_history.history['computation_rate'])
 print('average training reward:', '%.3f' % ave_test)
-print('average training reward:', '%.3e' % ave_comrate)
+print('average computation rate:', '%.3e' % ave_comrate)
+comrate_array = np.array(test_history.history['computation_rate'])
+steps_array = np.array(test_history.history['nb_steps'])
+comrate_per_step = comrate_array / steps_array
+ave_cps = np.mean(comrate_per_step)
+print('average computation rate per step:', '%.3e' % ave_cps)

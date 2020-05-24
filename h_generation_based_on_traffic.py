@@ -225,11 +225,12 @@ class Traffic:
                 if self.uveh[i].x <= self.road_length:  # 如果不在范围内，则不允许加入任务队列。
                     self.queue.append([self.n_step, self.ci(i), i, self.ci(i)])  # 任务信息进入队列
         self.n_step += 1
-        bias = 0
-        for i in range(self.n_uveh):
-            bias += self.cij(i, i) * self.bveh[i].f / (self.cij(i, i) * self.phi + self.bveh[i].f)
+        # bias = 0
+        # for i in range(self.n_uveh):
+        #     bias += self.cij(i, i) * self.bveh[i].f / (self.cij(i, i) * self.phi + self.bveh[i].f)
         comrate_sum = comrate_sum_v2i + comrate_sum_v2v
-        reward = (comrate_sum - 1.5*bias)/28e6
+        bias = 2.8e7
+        reward = (comrate_sum - bias)/bias
         if not test:
             self.renew_traffic()  # 刷新环境
         self.renew_v2v_channel_gain(test)
