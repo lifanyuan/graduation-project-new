@@ -178,6 +178,9 @@ class Traffic:
     def step(self, action, test=0):  # action目前仅仅是index 如果test=1，缩小reward方便调试
         comrate_v2v = np.zeros(self.n_uveh)  # 记录v2v车辆在本帧的计算率，序号为v2i车辆的元素必为0
         a = self.actions_all[action]  # decode action
+        idle_time_ap = 0  # idle time of AP in each step
+        abandon = 0  # number of tasks abandoned in each step
+        out_of_range = 0  # number of cases when User was out of Ap's range
         a_v2i = np.nonzero(a == -1)[0]  # all indices of vehicles in v2i mode
         a_v2v = np.nonzero(a >= 0)[0]  # all indices of vehicles in v2v mode
         for i in self.bveh:  # 计算完成，解除对基站车辆的占用
@@ -205,6 +208,7 @@ class Traffic:
                 t_task = task[1] * self.phi / self.ap_f  # 任务完成所需时间
                 t_latency = t_current + t_task + self.n_step - task[0]  # 任务的延时
                 if t_latency > self.max_latency:  # 任务完成将超过最大时延
+                    abandon += 1
                     del self.queue[0]  # 放弃该任务，弹出队列
                 elif t_current + t_task > 1:  # 任务无法在该帧完成
                     t_left = 1 - t_current  # 帧里剩余时间
@@ -216,7 +220,10 @@ class Traffic:
                     t_current += t_task  # 推进现在时间
                     if self.uveh[task[2]].x <= self.road_length:  # 如果不在范围内，则不增加总计算率。
                         comrate_sum_v2i += task[3]  # 增加总计算率
+                    else:
+                        out_of_range += 1
             else:
+                idle_time_ap += 1 - t_current
                 break  # 所有队列的积压任务在本帧计算完毕，还剩一定空闲时间。
         if np.size(a_v2i):  # 通信部件的工作：上传任务文件并加入队列,此时在帧的*开头*
             for i in a_v2i:
@@ -224,13 +231,15 @@ class Traffic:
                 # (te--任务刚开始上传的时间,s--任务剩余文件大小,I--任务归属车辆编号,s0--任务初始大小)
                 if self.uveh[i].x <= self.road_length:  # 如果不在范围内，则不允许加入任务队列。
                     self.queue.append([self.n_step, self.ci(i), i, self.ci(i)])  # 任务信息进入队列
+                else:
+                    out_of_range += 1
         self.n_step += 1
         # bias = 0
         # for i in range(self.n_uveh):
         #     bias += self.cij(i, i) * self.bveh[i].f / (self.cij(i, i) * self.phi + self.bveh[i].f)
         comrate_sum = comrate_sum_v2i + comrate_sum_v2v
         bias = 2.8e7
-        reward = (comrate_sum - bias)/bias
+        reward = (comrate_sum - bias) / bias
         if not test:
             self.renew_traffic()  # 刷新环境
         self.renew_v2v_channel_gain(test)
@@ -238,8 +247,20 @@ class Traffic:
         observ = self.get_observation(test)  # 生成环境值
         users_location_x = [i.x for i in self.uveh]
         done = all(map(lambda x: x > self.road_length, users_location_x))  # 检查车辆位置是否超过AP覆盖范围
-        # done = self.n_step == 70
-        info = {'comrate': comrate_sum}
+
+        v2i_number = sum(a == -1)
+        a_set = set(a)  # 计算竞争基站车辆的数目
+        if -1 in a_set:
+            a_set.remove(-1)
+        conflict = 0
+        for i in a_set:
+            num = sum(a == i)
+            if num > 1:
+                conflict += num - 1
+
+        info = {'comrate': comrate_sum, 'v2i_number': v2i_number,
+                'conflict': conflict, 'idle_time_ap': idle_time_ap, 'abandon': abandon,
+                'out_of_range': out_of_range,}
         # if done:
         #     reward = np.mean(self.comrate_his)
         # else:
@@ -265,8 +286,8 @@ if __name__ == "__main__":
     steps = 0
     observation = test.reset(test=0)
     observation, reward, done, _ = test.step(604, test=0)
-    observation, reward, done, _ = test.step(0, test=0)
-    observation, reward, done, _ = test.step(0, test=0)
+    for i in range(20):
+        observation, reward, done, _ = test.step(0, test=0)
     observation, reward, done, _ = test.step(0, test=0)
     observation, reward, done, _ = test.step(0, test=0)
     observation, reward, done, _ = test.step(156, test=0)

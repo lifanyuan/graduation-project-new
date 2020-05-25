@@ -111,15 +111,16 @@ class TestLogger(Callback):
 
     def on_episode_end(self, episode, logs):
         """ Print logs at end of each episode """
-        template = 'Episode {0}: reward: {1:.3f}, computation rate: {2:.3e} steps: {3}'
-        variables = [
-            episode + 1,
-            logs['episode_reward'],
-            logs['computation_rate'],
-            logs['nb_steps'],
-        ]
-        print(template.format(*variables))
-
+        template = 'Episode {episode}: reward: {reward:.3f}, computation rate: {comrate:.3e}, ' \
+                   'v2i rate: {rate:.3f}, steps: {step}'
+        variables = {
+            'episode': episode + 1,
+            'reward': logs['episode_reward'],
+            'comrate': logs['computation_rate'],
+            'step': logs['nb_steps'],
+            'rate': logs['v2i_rate'],
+        }
+        print(template.format(**variables))
 
 class TrainEpisodeLogger(Callback):
     def __init__(self):
@@ -178,24 +179,25 @@ class TrainEpisodeLogger(Callback):
         nb_step_digits = str(
             int(np.ceil(np.log10(self.params['nb_steps']))) + 1)
         template = '{step: ' + nb_step_digits + \
-            'd}/{nb_steps}: episode: {episode}, episode steps: {episode_steps}, episode reward: {episode_reward:.3f}, mean reward: {reward_mean:.3f} [{reward_min:.3f}, {reward_max:.3f}], {metrics}'
+            'd}/{nb_steps}: epi: {episode}, steps: {episode_steps}, reward: {episode_reward:.3f},' \
+            ' comrate: {episode_comrate:.3e}, v2i: {v2i_rate:.3f}, ' \
+            'conflict: {conflict_rate:.3f}, idle: {idle_rate:.3f}, abandon: {abandon_rate:.3f}, ' \
+            'range: {out_of_range}, mean r: {reward_mean:.3f} [{reward_min:.3f}, {reward_max:.3f}], {metrics}'
         variables = {
             'step': self.step,
             'nb_steps': self.params['nb_steps'],
             'episode': episode + 1,
-            # 'duration': duration,
             'episode_steps': episode_steps,
-            # 'sps': float(episode_steps) / duration,
+            'episode_comrate': logs['episode_comrate'],
+            'v2i_rate': logs['v2i_rate'],
+            'conflict_rate': logs['conflict_rate'],
+            'idle_rate': logs['idle_rate'],
+            'abandon_rate': logs['abandon_rate'],
+            'out_of_range': logs['out_of_range'],
             'episode_reward': np.sum(self.rewards[episode]),
             'reward_mean': np.mean(self.rewards[episode]),
             'reward_min': np.min(self.rewards[episode]),
             'reward_max': np.max(self.rewards[episode]),
-            # 'action_mean': np.mean(self.actions[episode]),
-            # 'action_min': np.min(self.actions[episode]),
-            # 'action_max': np.max(self.actions[episode]),
-            # 'obs_mean': np.mean(self.observations[episode]),
-            # 'obs_min': np.min(self.observations[episode]),
-            # 'obs_max': np.max(self.observations[episode]),
             'metrics': metrics_text,
         }
         print(template.format(**variables))
