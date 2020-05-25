@@ -338,6 +338,10 @@ class Agent(object):
             episode_step = 0
             comrate = 0
             v2i_number = 0
+            conflict = 0
+            idle_time_ap = 0
+            abandon = 0
+            out_of_range = 0
             # Obtain the initial observation by resetting the environment.
             self.reset_states()
             observation = deepcopy(env.reset())
@@ -414,6 +418,10 @@ class Agent(object):
                 }
                 comrate += info['comrate']
                 v2i_number += info['v2i_number']
+                conflict += info['conflict']
+                idle_time_ap += info['idle_time_ap']
+                abandon += info['abandon']
+                out_of_range += info['out_of_range']
                 callbacks.on_step_end(episode_step, step_logs)
                 episode_step += 1
                 self.step += 1
@@ -426,12 +434,19 @@ class Agent(object):
             self.forward(observation)
             self.backward(0., terminal=False)
             v2i_rate = v2i_number / episode_step
+            conflict_rate = conflict / episode_step
+            idle_rate = idle_time_ap / episode_step
+            abandon_rate = abandon / v2i_number
             # Report end of episode.
             episode_logs = {
                 'episode_reward': episode_reward,
                 'nb_steps': episode_step,
                 'computation_rate': comrate,
                 'v2i_rate': v2i_rate,
+                'conflict_rate': conflict_rate,
+                'idle_rate': idle_rate,
+                'abandon_rate': abandon_rate,
+                'out_of_range': out_of_range,
             }
             callbacks.on_episode_end(episode, episode_logs)
         callbacks.on_train_end()

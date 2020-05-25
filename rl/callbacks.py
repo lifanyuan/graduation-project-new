@@ -112,13 +112,18 @@ class TestLogger(Callback):
     def on_episode_end(self, episode, logs):
         """ Print logs at end of each episode """
         template = 'Episode {episode}: reward: {reward:.3f}, computation rate: {comrate:.3e}, ' \
-                   'v2i rate: {rate:.3f}, steps: {step}'
+                   'v2i rate: {rate:.3f}, steps: {step}, conflict: {conflict_rate:.3f}, idle: {idle_rate:.3f}, ' \
+                   'abandon: {abandon_rate:.3f}, range: {out_of_range}'
         variables = {
             'episode': episode + 1,
             'reward': logs['episode_reward'],
             'comrate': logs['computation_rate'],
             'step': logs['nb_steps'],
             'rate': logs['v2i_rate'],
+            'conflict_rate': logs['conflict_rate'],
+            'idle_rate': logs['idle_rate'],
+            'abandon_rate': logs['abandon_rate'],
+            'out_of_range': logs['out_of_range'],
         }
         print(template.format(**variables))
 
