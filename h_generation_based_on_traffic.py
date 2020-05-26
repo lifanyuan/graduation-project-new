@@ -148,15 +148,15 @@ class Traffic:
 
     def get_observation(self, test=0):  # 得到目前的环境observation值
         if test:
-            gain_x, gain_h, gain_q = 1, 1, 1
+            gain_x, gain_y, gain_h, gain_q = 1, 1, 1, 1
         else:
-            gain_x, gain_h, gain_q = 0.05, 8e8, 3e-8  # 为使状态变量接近1
+            gain_x, gain_y, gain_h, gain_q = 0.01, 1/7.5, 3e8, 5e-8  # 为使状态变量接近1
         queue_size = sum([i[1] for i in self.queue]) * gain_q
         queue_size = np.array([queue_size])
         users_location_x = np.array([i.x for i in self.uveh]) * gain_x
-        users_location_y = np.array([i.y for i in self.uveh])
+        users_location_y = np.array([i.y for i in self.uveh]) * gain_y
         bases_location_x = np.array([i.x for i in self.bveh]) * gain_x
-        bases_location_y = np.array([i.y for i in self.bveh])
+        bases_location_y = np.array([i.y for i in self.bveh]) * gain_y
         hi = self.v2i_channel_gain * gain_h
         hij = self.v2v_channel_gain.ravel() * gain_h
         if test:

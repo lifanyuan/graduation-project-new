@@ -342,6 +342,7 @@ class Agent(object):
             idle_time_ap = 0
             abandon = 0
             out_of_range = 0
+            action_his = []
             # Obtain the initial observation by resetting the environment.
             self.reset_states()
             observation = deepcopy(env.reset())
@@ -422,6 +423,7 @@ class Agent(object):
                 idle_time_ap += info['idle_time_ap']
                 abandon += info['abandon']
                 out_of_range += info['out_of_range']
+                action_his.append(tuple(env.actions_all[action]))
                 callbacks.on_step_end(episode_step, step_logs)
                 episode_step += 1
                 self.step += 1
@@ -447,6 +449,7 @@ class Agent(object):
                 'idle_rate': idle_rate,
                 'abandon_rate': abandon_rate,
                 'out_of_range': out_of_range,
+                'action_histroy': action_his,
             }
             callbacks.on_episode_end(episode, episode_logs)
         callbacks.on_train_end()
