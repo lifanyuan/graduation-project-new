@@ -130,6 +130,7 @@ class Agent(object):
                     callbacks.on_episode_begin(episode)
                     episode_step = np.int16(0)
                     episode_reward = np.float32(0)
+                    loss_list = []
                     v2i_number = 0
                     episode_comrate = 0
                     conflict = 0
@@ -210,6 +211,7 @@ class Agent(object):
                     done = True
                 metrics = self.backward(reward, terminal=done)
                 episode_reward += reward
+                loss_list.append(metrics[0])
                 v2i_number += info['v2i_number']
                 episode_comrate += info['comrate']
                 conflict += info['conflict']
@@ -236,6 +238,7 @@ class Agent(object):
                     # always non-terminal by convention.
                     self.forward(observation)
                     self.backward(0., terminal=False)
+                    loss = np.nanmean(loss_list)
                     v2i_rate = v2i_number/episode_step
                     conflict_rate = conflict / episode_step
                     idle_rate = idle_time_ap / episode_step
@@ -243,6 +246,7 @@ class Agent(object):
                     # This episode is finished, report and reset.
                     episode_logs = {
                         'episode_reward': episode_reward,
+                        'loss': loss,
                         'nb_episode_steps': episode_step,
                         'nb_steps': self.step,
                         'episode_comrate': episode_comrate,
